@@ -1,16 +1,21 @@
-// ==========================================
-// CICR Inventory Management System Core Logic
-// ==========================================
+import * as THREE from 'three';
+import './style.css';
+import type { InventoryItem, ActivityLog, UserDatabase } from './types';
+
+// Global declarations for CDN libraries
+declare const lucide: {
+    createIcons: () => void;
+};
 
 // Global state variables
-let inventory = [];
-let logs = [];
-let selectedItem = null;
+let inventory: InventoryItem[] = [];
+let logs: ActivityLog[] = [];
+let selectedItem: InventoryItem | null = null;
 
 // ==========================================
 // 1. Initial Sample Dataset
 // ==========================================
-const DEFAULT_INVENTORY = [
+const DEFAULT_INVENTORY: InventoryItem[] = [
     {
         id: "mc-01",
         name: "Arduino Uno R3",
@@ -115,7 +120,7 @@ const DEFAULT_INVENTORY = [
     }
 ];
 
-const DEFAULT_LOGS = [
+const DEFAULT_LOGS: ActivityLog[] = [
     { type: "system", timestamp: "2026-08-01 10:00", text: "Database initialized with base robotics stock." },
     { type: "borrow", timestamp: "2026-08-05 14:32", text: "<span>Rahul Sharma</span> checked out 2x <span>Arduino Uno R3</span> for 'Robo Soccer Chassis testing'." },
     { type: "borrow", timestamp: "2026-08-06 11:15", text: "<span>Sneha Gupta</span> checked out 2x <span>Raspberry Pi 4 Model B (4GB)</span> for 'Object detection using OpenCV'." },
@@ -127,26 +132,26 @@ const DEFAULT_LOGS = [
 // 2. Three.js 3D Background Engine
 // ==========================================
 class Background3D {
-    constructor() {
-        this.canvas = document.getElementById('canvas-3d');
-        this.scene = null;
-        this.camera = null;
-        this.renderer = null;
-        
-        this.grid1 = null;
-        this.grid2 = null;
-        this.particles = null;
-        
-        this.mouseX = 0;
-        this.mouseY = 0;
-        this.targetCameraX = 0;
-        this.targetCameraY = 5;
-        
-        this.gridSize = 250;
-        this.gridDivisions = 50;
-        this.gridSpacing = this.gridSize / this.gridDivisions;
-        this.moveSpeed = 0.05;
+    private canvas: HTMLCanvasElement;
+    private scene!: THREE.Scene;
+    private camera!: THREE.PerspectiveCamera;
+    private renderer!: THREE.WebGLRenderer;
+    
+    private grid1!: THREE.GridHelper;
+    private grid2!: THREE.GridHelper;
+    private particles!: THREE.Points;
+    
+    private mouseX = 0;
+    private mouseY = 0;
+    private targetCameraX = 0;
+    private targetCameraY = 4;
+    
+    private gridSize = 250;
+    private gridDivisions = 50;
+    private moveSpeed = 0.05;
 
+    constructor() {
+        this.canvas = document.getElementById('canvas-3d') as HTMLCanvasElement;
         this.init();
         this.createGrid();
         this.createParticles();
@@ -154,17 +159,14 @@ class Background3D {
         this.animate();
     }
 
-    init() {
-        // Create Scene
+    private init() {
         this.scene = new THREE.Scene();
         this.scene.fog = new THREE.FogExp2(0x06060e, 0.015);
 
-        // Create Camera
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.camera.position.set(0, 4, 18);
         this.camera.lookAt(0, 0, 0);
 
-        // Create WebGL Renderer
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
             antialias: true,
@@ -175,25 +177,21 @@ class Background3D {
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     }
 
-    createGrid() {
-        // We create two overlapping grids to facilitate infinite scrolling
-        const gridColor1 = new THREE.Color(0x00f0ff); // Neon Cyan
-        const gridColor2 = new THREE.Color(0xbd00ff); // Neon Purple
-        const helperColor = new THREE.Color(0x131326); // Dark Grid lines
+    private createGrid() {
+        const gridColor1 = new THREE.Color(0x00f0ff);
+        const gridColor2 = new THREE.Color(0xbd00ff);
+        const helperColor = new THREE.Color(0x131326);
 
-        // Grid 1
         this.grid1 = new THREE.GridHelper(this.gridSize, this.gridDivisions, gridColor1, helperColor);
         this.grid1.position.y = -6;
         this.grid1.position.z = 0;
         this.scene.add(this.grid1);
 
-        // Grid 2 (placed right behind Grid 1 along Z axis)
         this.grid2 = new THREE.GridHelper(this.gridSize, this.gridDivisions, gridColor2, helperColor);
         this.grid2.position.y = -6;
         this.grid2.position.z = -this.gridSize;
         this.scene.add(this.grid2);
 
-        // Add visual light sources in the scene
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
         this.scene.add(ambientLight);
 
@@ -206,7 +204,7 @@ class Background3D {
         this.scene.add(pointLight2);
     }
 
-    createParticles() {
+    private createParticles() {
         const particleCount = 250;
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array(particleCount * 3);
@@ -217,7 +215,6 @@ class Background3D {
         const pinkColor = new THREE.Color(0xff007a);
 
         for (let i = 0; i < particleCount; i++) {
-            // Position particles in a box above the floor grid
             const x = (Math.random() - 0.5) * 120;
             const y = Math.random() * 35 - 5;
             const z = (Math.random() - 0.7) * 150;
@@ -226,8 +223,7 @@ class Background3D {
             positions[i * 3 + 1] = y;
             positions[i * 3 + 2] = z;
 
-            // Mix colors
-            let rand = Math.random();
+            const rand = Math.random();
             let mixedColor = cyanColor;
             if (rand > 0.6) {
                 mixedColor = purpleColor;
@@ -243,7 +239,6 @@ class Background3D {
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-        // Create glowing circular dots using Canvas texture
         const material = new THREE.PointsMaterial({
             size: 0.18,
             vertexColors: true,
@@ -256,14 +251,12 @@ class Background3D {
         this.scene.add(this.particles);
     }
 
-    setupEvents() {
-        // Track mouse coordinates for camera parallax
+    private setupEvents() {
         window.addEventListener('mousemove', (e) => {
             this.mouseX = (e.clientX / window.innerWidth) * 2 - 1;
             this.mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
         });
 
-        // Resize handler
         window.addEventListener('resize', () => {
             this.camera.aspect = window.innerWidth / window.innerHeight;
             this.camera.updateProjectionMatrix();
@@ -272,14 +265,12 @@ class Background3D {
         });
     }
 
-    animate() {
+    private animate() {
         requestAnimationFrame(() => this.animate());
 
-        // Infinite floor grid Z movement
         this.grid1.position.z += this.moveSpeed;
         this.grid2.position.z += this.moveSpeed;
 
-        // Reset positions for seamless loop
         if (this.grid1.position.z >= this.gridSize) {
             this.grid1.position.z = this.grid2.position.z - this.gridSize;
         }
@@ -287,15 +278,13 @@ class Background3D {
             this.grid2.position.z = this.grid1.position.z - this.gridSize;
         }
 
-        // Float particles slowly upwards and towards the viewer
-        const positions = this.particles.geometry.attributes.position.array;
+        const positions = this.particles.geometry.attributes.position.array as Float32Array;
         const particleCount = positions.length / 3;
 
         for (let i = 0; i < particleCount; i++) {
-            positions[i * 3 + 1] += 0.015; // float up
-            positions[i * 3 + 2] += 0.03;  // move forward
+            positions[i * 3 + 1] += 0.015;
+            positions[i * 3 + 2] += 0.03;
 
-            // Reset when out of boundary
             if (positions[i * 3 + 1] > 30) {
                 positions[i * 3 + 1] = -5;
             }
@@ -306,14 +295,12 @@ class Background3D {
         }
         this.particles.geometry.attributes.position.needsUpdate = true;
 
-        // Smooth Camera Parallax Lerp
         this.targetCameraX = this.mouseX * 3;
         this.targetCameraY = 4 + (this.mouseY * 1.5);
 
         this.camera.position.x += (this.targetCameraX - this.camera.position.x) * 0.05;
         this.camera.position.y += (this.targetCameraY - this.camera.position.y) * 0.05;
         
-        // Slightly rotate camera looking slightly down
         this.camera.lookAt(0, -1, -5);
 
         this.renderer.render(this.scene, this.camera);
@@ -331,8 +318,8 @@ class DatabaseManager {
         if (!localStorage.getItem('cicr_logs')) {
             localStorage.setItem('cicr_logs', JSON.stringify(DEFAULT_LOGS));
         }
-        inventory = JSON.parse(localStorage.getItem('cicr_inventory'));
-        logs = JSON.parse(localStorage.getItem('cicr_logs'));
+        inventory = JSON.parse(localStorage.getItem('cicr_inventory')!);
+        logs = JSON.parse(localStorage.getItem('cicr_logs')!);
     }
 
     static save() {
@@ -340,7 +327,7 @@ class DatabaseManager {
         localStorage.setItem('cicr_logs', JSON.stringify(logs));
     }
 
-    static addLog(type, text) {
+    static addLog(type: ActivityLog['type'], text: string) {
         const date = new Date();
         const timestamp = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
         logs.unshift({ type, timestamp, text });
@@ -352,42 +339,56 @@ class DatabaseManager {
 // 4. Dashboard Manager Class
 // ==========================================
 class DashboardManager {
+    private activeCategory = 'all';
+    private searchQuery = '';
+
+    private inventoryGrid: HTMLElement;
+    private noResults: HTMLElement;
+    private searchInput: HTMLInputElement;
+    private clearSearchBtn: HTMLElement;
+    private categoryFilters: HTMLElement;
+    private resultsCount: HTMLElement;
+
+    private statTotal: HTMLElement;
+    private statBorrowed: HTMLElement;
+    private statLow: HTMLElement;
+    private statCategories: HTMLElement;
+
+    private btnAddTrigger: HTMLElement;
+    private btnLogs: HTMLElement;
+    private navHome: HTMLElement;
+    private navAbout: HTMLElement;
+
     constructor() {
-        this.activeCategory = 'all';
-        this.searchQuery = '';
+        this.inventoryGrid = document.getElementById('inventory-grid')!;
+        this.noResults = document.getElementById('no-results')!;
+        this.searchInput = document.getElementById('search-input') as HTMLInputElement;
+        this.clearSearchBtn = document.getElementById('clear-search')!;
+        this.categoryFilters = document.getElementById('category-filters')!;
+        this.resultsCount = document.getElementById('results-count')!;
 
-        // DOM elements
-        this.inventoryGrid = document.getElementById('inventory-grid');
-        this.noResults = document.getElementById('no-results');
-        this.searchInput = document.getElementById('search-input');
-        this.clearSearchBtn = document.getElementById('clear-search');
-        this.categoryFilters = document.getElementById('category-filters');
-        this.resultsCount = document.getElementById('results-count');
+        this.statTotal = document.getElementById('stat-total')!;
+        this.statBorrowed = document.getElementById('stat-borrowed')!;
+        this.statLow = document.getElementById('stat-low')!;
+        this.statCategories = document.getElementById('stat-categories')!;
 
-        // Stats
-        this.statTotal = document.getElementById('stat-total');
-        this.statBorrowed = document.getElementById('stat-borrowed');
-        this.statLow = document.getElementById('stat-low');
-        this.statCategories = document.getElementById('stat-categories');
-        // Modal triggers
-        this.btnAddTrigger = document.getElementById('nav-add-item');
-        this.btnLogs = document.getElementById('btn-logs-bell');
-        this.navHome = document.getElementById('nav-home');
-        this.navAbout = document.getElementById('nav-about');
+        this.btnAddTrigger = document.getElementById('nav-add-item')!;
+        this.btnLogs = document.getElementById('btn-logs-bell')!;
+        this.navHome = document.getElementById('nav-home')!;
+        this.navAbout = document.getElementById('nav-about')!;
 
         this.init();
     }
 
-    init() {
+    public init() {
         this.renderStats();
         this.renderInventory();
         this.setupEventListeners();
     }
 
-    setupEventListeners() {
-        // Search interactions
+    private setupEventListeners() {
         this.searchInput.addEventListener('input', (e) => {
-            this.searchQuery = e.target.value.toLowerCase().trim();
+            this.searchQuery = (e.target as HTMLInputElement).value.toLowerCase().trim();
             this.clearSearchBtn.style.display = this.searchQuery ? 'block' : 'none';
             this.renderInventory();
         });
@@ -400,48 +401,41 @@ class DashboardManager {
             this.searchInput.focus();
         });
 
-        // Category Filter selection
         this.categoryFilters.addEventListener('click', (e) => {
-            const btn = e.target.closest('.filter-btn');
+            const btn = (e.target as HTMLElement).closest('.filter-btn') as HTMLElement | null;
             if (!btn) return;
 
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
-            this.activeCategory = btn.dataset.category;
+            this.activeCategory = btn.dataset.category || 'all';
             this.renderInventory();
         });
 
-        // Add Item Modal trigger
         this.btnAddTrigger.addEventListener('click', (e) => {
             e.preventDefault();
             ModalManager.open('add-item-modal');
         });
 
-        // Logs Drawer trigger
         this.btnLogs.addEventListener('click', () => {
             ModalManager.openLogsDrawer();
         });
 
-        // Navigation links
         this.navHome.addEventListener('click', (e) => {
             e.preventDefault();
-            // Reset filters
             this.searchInput.value = '';
             this.searchQuery = '';
             this.clearSearchBtn.style.display = 'none';
             this.activeCategory = 'all';
             
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            document.querySelector('.filter-btn[data-category="all"]').classList.add('active');
+            document.querySelector('.filter-btn[data-category="all"]')!.classList.add('active');
             
             document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
             this.navHome.classList.add('active');
             
             this.renderInventory();
-            
-            // Scroll to library
-            document.querySelector('.inventory-section').scrollIntoView({ behavior: 'smooth' });
+            document.querySelector('.control-panel')!.scrollIntoView({ behavior: 'smooth' });
         });
 
         this.navAbout.addEventListener('click', (e) => {
@@ -449,12 +443,11 @@ class DashboardManager {
             ModalManager.openAboutModal();
         });
 
-        // Hero actions
         const heroExplore = document.getElementById('hero-btn-explore');
         const heroAbout = document.getElementById('hero-btn-about');
         if (heroExplore) {
             heroExplore.addEventListener('click', () => {
-                document.querySelector('.control-panel').scrollIntoView({ behavior: 'smooth' });
+                document.querySelector('.control-panel')!.scrollIntoView({ behavior: 'smooth' });
             });
         }
         if (heroAbout) {
@@ -464,11 +457,11 @@ class DashboardManager {
         }
     }
 
-    renderStats() {
+    private renderStats() {
         let totalQty = 0;
         let checkedOutQty = 0;
         let lowStockCount = 0;
-        const uniqueCats = new Set();
+        const uniqueCats = new Set<string>();
 
         inventory.forEach(item => {
             totalQty += item.quantity;
@@ -483,16 +476,15 @@ class DashboardManager {
             }
         });
 
-        this.statTotal.innerText = totalQty;
-        this.statBorrowed.innerText = checkedOutQty;
-        this.statLow.innerText = lowStockCount;
-        this.statCategories.innerText = uniqueCats.size;
+        this.statTotal.innerText = String(totalQty);
+        this.statBorrowed.innerText = String(checkedOutQty);
+        this.statLow.innerText = String(lowStockCount);
+        this.statCategories.innerText = String(uniqueCats.size);
     }
 
-    renderInventory() {
+    private renderInventory() {
         this.inventoryGrid.innerHTML = '';
         
-        // Filter items
         const filtered = inventory.filter(item => {
             const matchesCategory = this.activeCategory === 'all' || item.category === this.activeCategory;
             const matchesSearch = item.name.toLowerCase().includes(this.searchQuery) ||
@@ -501,7 +493,6 @@ class DashboardManager {
             return matchesCategory && matchesSearch;
         });
 
-        // Render card lists
         if (filtered.length === 0) {
             this.noResults.style.display = 'flex';
             this.resultsCount.innerText = "Showing 0 items";
@@ -516,15 +507,13 @@ class DashboardManager {
             this.inventoryGrid.appendChild(card);
         });
 
-        // Reinitialize lucide icons inside dynamic templates
         lucide.createIcons();
     }
 
-    createCardElement(item) {
+    private createCardElement(item: InventoryItem): HTMLElement {
         const card = document.createElement('div');
         card.className = 'inventory-card glass';
         
-        // Compute active borrow sum
         const borrowedSum = item.borrowedBy.reduce((sum, rec) => sum + rec.qty, 0);
         const available = item.quantity - borrowedSum;
 
@@ -542,8 +531,7 @@ class DashboardManager {
             statusClass = 'status-borrowed';
         }
 
-        // Format short category
-        const catMap = {
+        const catMap: Record<string, string> = {
             microcontrollers: "Controller",
             sensors: "Sensor",
             actuators: "Actuator",
@@ -571,7 +559,6 @@ class DashboardManager {
             </div>
         `;
 
-        // Click handler to view details
         card.addEventListener('click', () => {
             ModalManager.openDetailModal(item);
         });
@@ -585,7 +572,6 @@ class DashboardManager {
 // ==========================================
 class ModalManager {
     static init() {
-        // Global close click registers
         document.querySelectorAll('.close-modal, .modal-overlay').forEach(el => {
             el.addEventListener('click', (e) => {
                 if (e.target === el || el.classList.contains('close-modal')) {
@@ -594,51 +580,46 @@ class ModalManager {
             });
         });
 
-        // Prevent click events inside content bubbeling to overlay closing trigger
         document.querySelectorAll('.modal-content').forEach(content => {
             content.addEventListener('click', (e) => e.stopPropagation());
         });
 
-        // Add Item Form Submit
-        const addForm = document.getElementById('add-item-form');
+        const addForm = document.getElementById('add-item-form') as HTMLFormElement;
         addForm.addEventListener('submit', (e) => {
             e.preventDefault();
             this.handleAddItemSubmit();
         });
 
-        document.getElementById('btn-add-cancel').addEventListener('click', () => {
+        document.getElementById('btn-add-cancel')!.addEventListener('click', () => {
             this.close('add-item-modal');
         });
 
-        // Borrow Form Submit
-        const borrowForm = document.getElementById('borrow-form');
+        const borrowForm = document.getElementById('borrow-form') as HTMLFormElement;
         borrowForm.addEventListener('submit', (e) => {
             e.preventDefault();
             this.handleBorrowSubmit();
         });
 
-        document.querySelector('.btn-back-to-detail').addEventListener('click', () => {
+        document.querySelector('.btn-back-to-detail')!.addEventListener('click', () => {
             this.close('borrow-form-modal');
             this.open('detail-modal');
         });
 
-        // Detail Modal primary actions
-        document.getElementById('btn-borrow').addEventListener('click', () => {
+        document.getElementById('btn-borrow')!.addEventListener('click', () => {
             this.openBorrowFormModal();
         });
 
-        // About Modal Close
-        document.querySelector('.btn-close-about').addEventListener('click', () => {
+        document.querySelector('.btn-close-about')!.addEventListener('click', () => {
             this.close('about-modal');
         });
     }
 
-    static open(modalId) {
-        document.getElementById(modalId).classList.add('active');
+    static open(modalId: string) {
+        document.getElementById(modalId)!.classList.add('active');
     }
 
-    static close(modalId) {
-        document.getElementById(modalId).classList.remove('active');
+    static close(modalId: string) {
+        document.getElementById(modalId)!.classList.remove('active');
     }
 
     static closeAll() {
@@ -652,51 +633,50 @@ class ModalManager {
         this.open('about-modal');
     }
 
-    static openDetailModal(item) {
+    static openDetailModal(item: InventoryItem) {
         selectedItem = item;
         
         const borrowedSum = item.borrowedBy.reduce((sum, rec) => sum + rec.qty, 0);
         const available = item.quantity - borrowedSum;
 
-        // Set labels
-        document.getElementById('detail-name').innerText = item.name;
-        document.getElementById('detail-location').innerText = item.location;
-        document.getElementById('detail-specs').innerText = item.specs;
-        document.getElementById('detail-quantity').innerHTML = `<strong>${available}</strong> / ${item.quantity} available`;
+        document.getElementById('detail-name')!.innerText = item.name;
+        document.getElementById('detail-location')!.innerText = item.location;
+        document.getElementById('detail-specs')!.innerText = item.specs;
+        document.getElementById('detail-quantity')!.innerHTML = `<strong>${available}</strong> / ${item.quantity} available`;
         
-        const catMap = {
+        const catMap: Record<string, string> = {
             microcontrollers: "Microcontroller / Development Board",
             sensors: "Sensor & Module",
             actuators: "Actuator & Driver",
             power: "Power & Battery Storage",
             tools: "Lab Equipment / Tool"
         };
-        document.getElementById('detail-category').innerText = catMap[item.category] || item.category;
+        document.getElementById('detail-category')!.innerText = catMap[item.category] || item.category;
 
-        // Status badge
-        const badge = document.getElementById('detail-status');
-        badge.className = 'modal-status-badge'; // Reset
+        const badge = document.getElementById('detail-status')!;
+        badge.className = 'modal-status-badge'; 
         
+        const borrowBtn = document.getElementById('btn-borrow') as HTMLButtonElement;
+
         if (available === 0) {
             badge.innerText = 'Out of Stock';
             badge.classList.add('status-out');
-            document.getElementById('btn-borrow').disabled = true;
-            document.getElementById('btn-borrow').style.opacity = '0.5';
+            borrowBtn.disabled = true;
+            borrowBtn.style.opacity = '0.5';
         } else if (available <= 2) {
             badge.innerText = 'Low Stock';
             badge.classList.add('status-low');
-            document.getElementById('btn-borrow').disabled = false;
-            document.getElementById('btn-borrow').style.opacity = '1';
+            borrowBtn.disabled = false;
+            borrowBtn.style.opacity = '1';
         } else {
             badge.innerText = 'Available';
             badge.classList.add('status-available');
-            document.getElementById('btn-borrow').disabled = false;
-            document.getElementById('btn-borrow').style.opacity = '1';
+            borrowBtn.disabled = false;
+            borrowBtn.style.opacity = '1';
         }
 
-        // Render Borrowers List
-        const borrowersPanel = document.getElementById('borrowers-panel');
-        const listContainer = document.getElementById('borrowers-list');
+        const borrowersPanel = document.getElementById('borrowers-panel')!;
+        const listContainer = document.getElementById('borrowers-list')!;
         listContainer.innerHTML = '';
 
         if (item.borrowedBy.length > 0) {
@@ -717,8 +697,7 @@ class ModalManager {
                     </div>
                 `;
                 
-                // Add inline return trigger
-                recEl.querySelector('.btn-inline-return').addEventListener('click', (e) => {
+                recEl.querySelector('.btn-inline-return')!.addEventListener('click', (e) => {
                     e.stopPropagation();
                     this.handleReturnClick(idx);
                 });
@@ -739,22 +718,21 @@ class ModalManager {
         const borrowedSum = selectedItem.borrowedBy.reduce((sum, rec) => sum + rec.qty, 0);
         const available = selectedItem.quantity - borrowedSum;
 
-        document.getElementById('borrow-form-subtitle').innerText = `Component: ${selectedItem.name}`;
+        document.getElementById('borrow-form-subtitle')!.innerText = `Component: ${selectedItem.name}`;
         
-        const qtyLimit = document.getElementById('borrow-qty-limit');
+        const qtyLimit = document.getElementById('borrow-qty-limit')!;
         qtyLimit.innerText = `Max units available: ${available}`;
 
-        const qtyInput = document.getElementById('borrow-qty');
-        qtyInput.max = available;
-        qtyInput.value = 1;
+        const qtyInput = document.getElementById('borrow-qty') as HTMLInputElement;
+        qtyInput.max = String(available);
+        qtyInput.value = '1';
 
-        // Hide detail modal to open borrow modal
         this.close('detail-modal');
         this.open('borrow-form-modal');
     }
 
     static openLogsDrawer() {
-        const logsList = document.getElementById('logs-list');
+        const logsList = document.getElementById('logs-list')!;
         logsList.innerHTML = '';
 
         if (logs.length === 0) {
@@ -784,19 +762,18 @@ class ModalManager {
         lucide.createIcons();
     }
 
-    static handleAddItemSubmit() {
-        const name = document.getElementById('item-name').value.trim();
-        const category = document.getElementById('item-category').value;
-        const qty = parseInt(document.getElementById('item-qty').value);
-        const location = document.getElementById('item-location').value.trim();
-        const specs = document.getElementById('item-specs').value.trim() || "No specifications provided.";
+    private static handleAddItemSubmit() {
+        const name = (document.getElementById('item-name') as HTMLInputElement).value.trim();
+        const category = (document.getElementById('item-category') as HTMLSelectElement).value;
+        const qty = parseInt((document.getElementById('item-qty') as HTMLInputElement).value);
+        const location = (document.getElementById('item-location') as HTMLInputElement).value.trim();
+        const specs = (document.getElementById('item-specs') as HTMLTextAreaElement).value.trim() || "No specifications provided.";
 
         if (!name || !category || isNaN(qty) || !location) return;
 
-        // Generate clean unique ID
         const id = `${category.slice(0, 2)}-${Date.now().toString().slice(-4)}`;
 
-        const newItem = {
+        const newItem: InventoryItem = {
             id,
             name,
             category,
@@ -807,25 +784,21 @@ class ModalManager {
         };
 
         inventory.unshift(newItem);
-        
-        // Log the activity
         DatabaseManager.addLog('add', `Registered new component <span>${name}</span> (Qty: ${qty}) at <span>${location}</span>.`);
         
-        // Clear Form fields
-        document.getElementById('add-item-form').reset();
+        (document.getElementById('add-item-form') as HTMLFormElement).reset();
         
-        // Refresh UI
         this.close('add-item-modal');
-        window.dashboard.init();
+        window.dashboard!.init();
     }
 
-    static handleBorrowSubmit() {
+    private static handleBorrowSubmit() {
         if (!selectedItem) return;
 
-        const borrowerName = document.getElementById('borrow-name').value.trim();
-        const rollNum = document.getElementById('borrow-roll').value.trim();
-        const qty = parseInt(document.getElementById('borrow-qty').value);
-        const purpose = document.getElementById('borrow-purpose').value.trim();
+        const borrowerName = (document.getElementById('borrow-name') as HTMLInputElement).value.trim();
+        const rollNum = (document.getElementById('borrow-roll') as HTMLInputElement).value.trim();
+        const qty = parseInt((document.getElementById('borrow-qty') as HTMLInputElement).value);
+        const purpose = (document.getElementById('borrow-purpose') as HTMLInputElement).value.trim();
 
         const borrowedSum = selectedItem.borrowedBy.reduce((sum, rec) => sum + rec.qty, 0);
         const available = selectedItem.quantity - borrowedSum;
@@ -837,7 +810,6 @@ class ModalManager {
 
         const date = new Date().toISOString().split('T')[0];
 
-        // Add record
         selectedItem.borrowedBy.push({
             name: borrowerName,
             roll: rollNum,
@@ -846,36 +818,26 @@ class ModalManager {
             date: date
         });
 
-        // Log transaction
         DatabaseManager.addLog('borrow', `<span>${borrowerName}</span> checked out ${qty}x <span>${selectedItem.name}</span> for '${purpose}'.`);
 
-        // Reset form
-        document.getElementById('borrow-form').reset();
-
-        // Refresh database and views
+        (document.getElementById('borrow-form') as HTMLFormElement).reset();
         DatabaseManager.save();
         this.close('borrow-form-modal');
-        window.dashboard.init();
+        window.dashboard!.init();
     }
 
-    static handleReturnClick(idx) {
+    private static handleReturnClick(idx: number) {
         if (!selectedItem) return;
 
         const rec = selectedItem.borrowedBy[idx];
         if (!rec) return;
 
-        // Remove the borrow record
         selectedItem.borrowedBy.splice(idx, 1);
-
-        // Log transaction
         DatabaseManager.addLog('return', `<span>${rec.name}</span> returned ${rec.qty}x <span>${selectedItem.name}</span>.`);
 
-        // Save and refresh
         DatabaseManager.save();
-        
-        // Refresh view inside current modal
         this.openDetailModal(selectedItem);
-        window.dashboard.init();
+        window.dashboard!.init();
     }
 }
 
@@ -883,38 +845,53 @@ class ModalManager {
 // 6. User Authentication Manager
 // ==========================================
 class AuthManager {
+    private static loginForm: HTMLFormElement;
+    private static signupForm: HTMLFormElement;
+    private static authOverlay: HTMLElement;
+    private static appContainer: HTMLElement;
+
+    private static loginUserInp: HTMLInputElement;
+    private static loginPassInp: HTMLInputElement;
+    private static loginErr: HTMLElement;
+
+    private static signupUserInp: HTMLInputElement;
+    private static signupEmailInp: HTMLInputElement;
+    private static signupPassInp: HTMLInputElement;
+    private static signupErr: HTMLElement;
+    private static signupSuccess: HTMLElement;
+
+    private static navUsername: HTMLElement;
+    private static navLogoutBtn: HTMLElement;
+
     static init() {
-        // Setup local users database if not exists
         if (!localStorage.getItem('cicr_users')) {
             localStorage.setItem('cicr_users', JSON.stringify({}));
         }
 
-        this.loginForm = document.getElementById('login-form');
-        this.signupForm = document.getElementById('signup-form');
-        this.authOverlay = document.getElementById('auth-overlay');
-        this.appContainer = document.getElementById('app-container');
+        this.loginForm = document.getElementById('login-form') as HTMLFormElement;
+        this.signupForm = document.getElementById('signup-form') as HTMLFormElement;
+        this.authOverlay = document.getElementById('auth-overlay')!;
+        this.appContainer = document.getElementById('app-container')!;
 
-        // Form fields
-        this.loginUserInp = document.getElementById('login-username');
-        this.loginPassInp = document.getElementById('login-password');
-        this.loginErr = document.getElementById('login-error');
+        this.loginUserInp = document.getElementById('login-username') as HTMLInputElement;
+        this.loginPassInp = document.getElementById('login-password') as HTMLInputElement;
+        this.loginErr = document.getElementById('login-error')!;
 
-        this.signupUserInp = document.getElementById('signup-username');
-        this.signupEmailInp = document.getElementById('signup-email');
-        this.signupPassInp = document.getElementById('signup-password');
-        this.signupErr = document.getElementById('signup-error');
-        this.signupSuccess = document.getElementById('signup-success');
+        this.signupUserInp = document.getElementById('signup-username') as HTMLInputElement;
+        this.signupEmailInp = document.getElementById('signup-email') as HTMLInputElement;
+        this.signupPassInp = document.getElementById('signup-password') as HTMLInputElement;
+        this.signupErr = document.getElementById('signup-error')!;
+        this.signupSuccess = document.getElementById('signup-success')!;
 
-        this.navUsername = document.getElementById('nav-username');
-        this.navLogoutBtn = document.getElementById('nav-logout');
+        this.navUsername = document.getElementById('nav-username')!;
+        this.navLogoutBtn = document.getElementById('nav-logout')!;
 
         this.setupEventListeners();
         this.checkAuth();
     }
 
-    static setupEventListeners() {
-        // Toggle view links
-        document.getElementById('go-to-signup').addEventListener('click', (e) => {
+    private static setupEventListeners() {
+        document.getElementById('go-to-signup')!.addEventListener('click', (e) => {
             e.preventDefault();
             this.loginForm.style.display = 'none';
             this.signupForm.style.display = 'block';
@@ -922,7 +899,7 @@ class AuthManager {
             this.signupForm.reset();
         });
 
-        document.getElementById('go-to-login').addEventListener('click', (e) => {
+        document.getElementById('go-to-login')!.addEventListener('click', (e) => {
             e.preventDefault();
             this.signupForm.style.display = 'none';
             this.loginForm.style.display = 'block';
@@ -931,7 +908,6 @@ class AuthManager {
             this.loginForm.reset();
         });
 
-        // Submit actions
         this.loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
             this.handleLogin();
@@ -942,14 +918,13 @@ class AuthManager {
             this.handleSignup();
         });
 
-        // Logout
         this.navLogoutBtn.addEventListener('click', (e) => {
             e.preventDefault();
             this.handleLogout();
         });
     }
 
-    static checkAuth() {
+    private static checkAuth() {
         const currentUser = localStorage.getItem('cicr_auth');
         if (currentUser) {
             this.loginSuccess(currentUser);
@@ -960,58 +935,50 @@ class AuthManager {
         }
     }
 
-    static handleLogin() {
+    private static handleLogin() {
         const username = this.loginUserInp.value.trim();
         const password = this.loginPassInp.value;
 
-        // Reset errors
         this.loginErr.style.display = 'none';
 
-        // Check defaults
         if (username === 'SRVKILLER09' && password === 'IAMTHEBEST') {
             this.loginSuccess(username);
             return;
         }
 
-        // Check registered db
-        const users = JSON.parse(localStorage.getItem('cicr_users'));
+        const users = JSON.parse(localStorage.getItem('cicr_users')!) as UserDatabase;
         if (users[username] && users[username] === password) {
             this.loginSuccess(username);
             return;
         }
 
-        // Show error and shake
         this.loginErr.innerText = "Access Denied: Invalid credentials.";
         this.loginErr.style.display = 'block';
         this.loginErr.style.animation = 'none';
-        this.loginErr.offsetHeight; // Trigger reflow
+        this.loginErr.offsetHeight; 
         this.loginErr.style.animation = 'shake-error 0.4s ease';
     }
 
-    static loginSuccess(username) {
+    private static loginSuccess(username: string) {
         localStorage.setItem('cicr_auth', username);
         this.navUsername.innerText = username;
 
-        // Transitions
         this.authOverlay.classList.add('hidden');
         setTimeout(() => {
             this.authOverlay.style.display = 'none';
             this.appContainer.style.display = 'flex';
             
-            // Lazy initialize dashboard once logged in
             if (!window.dashboard) {
                 window.dashboard = new DashboardManager();
             } else {
                 window.dashboard.init();
             }
             lucide.createIcons();
-
-            // Start terminal typing simulation
             TerminalSimulator.start();
         }, 400);
     }
 
-    static handleSignup() {
+    private static handleSignup() {
         const username = this.signupUserInp.value.trim();
         const email = this.signupEmailInp.value.trim();
         const password = this.signupPassInp.value;
@@ -1029,29 +996,26 @@ class AuthManager {
             return;
         }
 
-        const users = JSON.parse(localStorage.getItem('cicr_users'));
+        const users = JSON.parse(localStorage.getItem('cicr_users')!) as UserDatabase;
         if (users[username]) {
             this.showSignupError("Username already registered.");
             return;
         }
 
-        // Save new user credentials
         users[username] = password;
         localStorage.setItem('cicr_users', JSON.stringify(users));
 
-        // Add to history log
         DatabaseManager.addLog('system', `New operator registered: <span>${username}</span> (${email}).`);
 
-        // Show success and auto switch after delay
         this.signupSuccess.innerText = "Registration complete! Switching to Login...";
         this.signupSuccess.style.display = 'block';
 
         setTimeout(() => {
-            document.getElementById('go-to-login').click();
+            document.getElementById('go-to-login')!.click();
         }, 1500);
     }
 
-    static showSignupError(msg) {
+    private static showSignupError(msg: string) {
         this.signupErr.innerText = msg;
         this.signupErr.style.display = 'block';
         this.signupErr.style.animation = 'none';
@@ -1059,10 +1023,9 @@ class AuthManager {
         this.signupErr.style.animation = 'shake-error 0.4s ease';
     }
 
-    static handleLogout() {
+    private static handleLogout() {
         localStorage.removeItem('cicr_auth');
         
-        // Transitions out
         this.appContainer.style.display = 'none';
         this.authOverlay.style.display = 'flex';
         setTimeout(() => {
@@ -1099,11 +1062,11 @@ class TerminalSimulator {
             const text = lines[lineIdx];
             const lineEl = document.createElement('div');
             lineEl.className = 'terminal-line';
-            body.appendChild(lineEl);
+            body!.appendChild(lineEl);
 
             let charIdx = 0;
             lineEl.innerHTML = `<span>&rarr;&nbsp;</span><span class="txt-content"></span>`;
-            const txtSpan = lineEl.querySelector('.txt-content');
+            const txtSpan = lineEl.querySelector('.txt-content') as HTMLElement;
             
             lineEl.classList.add('visible');
 
@@ -1136,22 +1099,21 @@ class TerminalSimulator {
     }
 }
 
+// Extend global window interface for development debugging
+declare global {
+    interface Window {
+        bg3D?: Background3D;
+        dashboard?: DashboardManager;
+    }
+}
+
 // ==========================================
 // 7. Application Bootstrap
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Initialize databases
     DatabaseManager.init();
-
-    // 2. Initialize 3D renderer
     window.bg3D = new Background3D();
-
-    // 3. Initialize Modals
     ModalManager.init();
-
-    // 4. Initialize Authentication
     AuthManager.init();
-
-    // 5. Initial lucide trigger
     lucide.createIcons();
 });

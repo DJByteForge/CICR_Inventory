@@ -8,9 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
-    <!-- Vanilla CSS -->
-    <link rel="stylesheet" href="style.css">
-    <!-- Lucide Icons -->
+    <!-- Lucide Icons CDN (for dynamic runtime parsing) -->
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
@@ -194,6 +192,7 @@
                     </div>
                 </div>
             </section>
+
             <!-- Filter & Search Panel -->
             <section class="control-panel glass">
                 <div class="search-box">
@@ -424,9 +423,7 @@
         </div>
     </div>
 
-    <!-- Three.js Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Application Script -->
-    <script src="app.js"></script>
+    <!-- Entry module scripts for Vite bundling -->
+    <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
